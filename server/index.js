@@ -5,10 +5,15 @@ const mongoose = require('mongoose');
 const expenseRoutes = require('./routes/expenseRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 
+const connectDB = require('./config/db');
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Connect to Database
+connectDB();
 
 // Middleware
 app.use(cors());
@@ -29,15 +34,6 @@ app.get('/', (req, res) => {
   res.send('ExpenseMind AI Backend is running...');
 });
 
-// Database Connection
-mongoose
-  .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/expensemind')
-  .then(() => {
-    console.log('Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('Database connection error:', err);
-  });
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

@@ -62,8 +62,23 @@ npm install
 npm run dev
 ```
 
-## 🔐 Environment Variables
-Make sure to configure your `.env` files in both `server/` and `client/` (if needed) for the connection to work. The system includes a **Smart Lite** mode that works even without an OpenAI key for testing!
+## 🔐 Database & AI Access
+
+To properly store details and access AI features, follow these steps:
+
+### 1. MongoDB Configuration
+Ensure you have a MongoDB instance running.
+- **Local**: `mongodb://localhost:27017/expensemind`
+- **Cloud (Atlas)**: `mongodb+srv://<user>:<password>@cluster.mongodb.net/expensemind`
+
+Update the `MONGO_URI` in **both** `.env` files:
+- [server/.env](file:///d:/Expense/server/.env)
+- [backend/.env](file:///d:/Expense/backend/.env)
+
+### 2. OpenAI API Key
+Access premium AI insights by adding your OpenAI key to the `OPENAI_API_KEY` field in the `.env` files.
+> **Note**: If no key is provided, the app will automatically switch to **Smart Lite Mode** using local logic.
+
 
 ## 📄 License
 This project is for educational and demo purposes.
