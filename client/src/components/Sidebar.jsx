@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logout } from '../utils/firebase';
 import {
   LayoutDashboard,
   PlusCircle,
@@ -11,6 +12,8 @@ import {
   Menu,
   X,
   Sparkles,
+  LogOut,
+  Cloud
 } from 'lucide-react';
 
 const navItems = [
@@ -21,10 +24,10 @@ const navItems = [
   { id: 'predict', label: 'Predictions', icon: TrendingUp },
   { id: 'health', label: 'Health Score', icon: Heart },
   { id: 'chat', label: 'AI Chat', icon: MessageCircle },
-  { id: 'alerts', label: 'Alerts', icon: Bell },
+  { id: 'export', label: 'Export Data', icon: Cloud },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+export default function Sidebar({ activeTab, setActiveTab, user }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -72,6 +75,19 @@ export default function Sidebar({ activeTab, setActiveTab }) {
             </div>
           )}
         </div>
+
+        {/* User Profile */}
+        {!collapsed && user && (
+          <div className="px-5 py-4 flex items-center gap-3">
+            <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full border border-white/10" />
+            <div className="overflow-hidden">
+              <p className="text-sm font-medium truncate text-[var(--text-primary)]">{user.displayName}</p>
+              <button onClick={() => logout()} className="text-[11px] text-[var(--text-muted)] hover:text-white flex items-center gap-1">
+                <LogOut size={10} /> Logout
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">

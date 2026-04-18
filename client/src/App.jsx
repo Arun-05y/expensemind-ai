@@ -7,14 +7,18 @@ import SpendingPersonality from './components/SpendingPersonality';
 import Predictions from './components/Predictions';
 import HealthScore from './components/HealthScore';
 import AIChat from './components/AIChat';
-import Alerts from './components/Alerts';
+import ExportData from './components/ExportData';
+import Login from './components/Login';
 import { sampleExpenses, monthlyTrendData } from './data/sampleData';
 import { getExpenses, addExpense } from './utils/api';
+import { auth } from './utils/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   const fetchExpenses = useCallback(async () => {
     try {
@@ -34,7 +38,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchExpenses();
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        fetchExpenses();
+      } else {
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
   }, [fetchExpenses]);
 
   const handleAddExpense = useCallback(async (expenseData) => {
@@ -51,6 +63,10 @@ export default function App() {
       setExpenses(prev => [newExpense, ...prev]);
     }
   }, []);
+
+  if (!user && !loading) {
+    return <Login setUser={setUser} />;
+  }
 
   const renderContent = () => {
     if (loading && expenses.length === 0) {
@@ -77,8 +93,8 @@ export default function App() {
         return <HealthScore expenses={expenses} />;
       case 'chat':
         return <AIChat expenses={expenses} />;
-      case 'alerts':
-        return <Alerts expenses={expenses} />;
+      case 'export':
+        return <ExportData expenses={expenses} />;
       default:
         return <Dashboard expenses={expenses} monthlyTrend={monthlyTrendData} />;
     }
@@ -86,7 +102,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-primary)]">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
 
       {/* Main Content */}
       <main
