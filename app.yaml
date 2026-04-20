@@ -1,0 +1,14 @@
+runtime: nodejs18
+service: default
+
+env_variables:
+  NODE_ENV: "production"
+  PORT: "8080" # App Engine default
+
+handlers:
+  - url: /api/.*
+    script: auto
+
+  - url: /(.*)
+    static_files: server/public/\1
+    upload: server/public/.*

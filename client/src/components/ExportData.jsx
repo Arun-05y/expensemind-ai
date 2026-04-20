@@ -38,11 +38,12 @@ export default function ExportData({ expenses }) {
           <button
             onClick={() => handleExport('drive')}
             disabled={exporting}
+            aria-label={done ? "Synced Successfully" : "Sync data to Google Drive"}
             className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all
               ${done ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'}`}
           >
             {exporting ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div aria-label="Exporting..." className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : done ? (
               <>
                 <CheckCircle2 size={20} />
@@ -69,12 +70,14 @@ export default function ExportData({ expenses }) {
           <div className="grid grid-cols-2 gap-3 w-full">
             <button
               onClick={() => handleExport('json')}
+              aria-label="Download backup as JSON"
               className="flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium transition-colors"
             >
               <FileJson size={16} /> JSON
             </button>
             <button
               onClick={() => handleExport('csv')}
+              aria-label="Download backup as CSV"
               className="flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium transition-colors"
             >
               <FileText size={16} /> CSV

@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Expense = require('../models/Expense');
 const { body, validationResult } = require('express-validator');
+const xss = require('xss');
 
-// Get all expenses
+/**
+ * @route GET /api/expenses
+ * @desc Get all expenses sorted by date
+ */
 router.get('/', async (req, res) => {
   try {
     const expenses = await Expense.find().sort({ date: -1 });
@@ -13,13 +17,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Add an expense
+/**
+ * @route POST /api/expenses
+ * @desc Add a new expense with validation and sanitization
+ */
 router.post(
   '/',
   [
     body('amount').isNumeric().withMessage('Amount must be a number'),
-    body('category').notEmpty().withMessage('Category is required'),
+    body('category').trim().notEmpty().escape().withMessage('Category is required'),
     body('date').notEmpty().withMessage('Date is required'),
+    body('note').trim().escape(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -31,7 +39,7 @@ router.post(
       amount: req.body.amount,
       category: req.body.category,
       date: req.body.date,
-      note: req.body.note,
+      note: xss(req.body.note), // Double protection with xss sanitization
       icon: req.body.icon,
     });
 

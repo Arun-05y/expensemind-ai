@@ -1,14 +1,31 @@
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { LRUCache } = require('lru-cache');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Initialize Gemini with System Instructions and JSON mode
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY);
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-1.5-flash",
+  systemInstruction: "You are ExpenseMind AI, a premium financial advisor. You always return responses in strict JSON format. No markdown, no extra text.",
+  generationConfig: { responseMimeType: "application/json" }
+});
+
+// Initialize Cache - 100 items capacity, 1 hour TTL
+const aiCache = new LRUCache({
+  max: 100,
+  ttl: 1000 * 60 * 60,
 });
 
 const formatCurrency = (val) => `₹${Number(val).toLocaleString('en-IN')}`;
 
+/**
+ * Generates AI-driven financial insights based on user expense data.
+ * @param {Object} req - Express request object containing expenses in body.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} - Sends JSON response with insights.
+ */
 exports.getAIInsights = async (req, res) => {
   const { expenses } = req.body;
 
@@ -16,9 +33,15 @@ exports.getAIInsights = async (req, res) => {
     return res.status(400).json({ message: 'No expense data provided' });
   }
 
+  // Generate a unique cache key based on expense summary
   const expenseSummary = expenses.slice(0, 50).map(e => 
     `${e.date}: ${e.category} - ${e.amount} (${e.note || ''})`
   ).join('\n');
+  
+  const cacheKey = `insights_${Buffer.from(expenseSummary).toString('base64').substring(0, 50)}`;
+  if (aiCache.has(cacheKey)) {
+    return res.json(aiCache.get(cacheKey));
+  }
 
   try {
     const prompt = `
@@ -34,22 +57,31 @@ exports.getAIInsights = async (req, res) => {
         "prediction": expected amount for next month as a number
       }
 
-      Focus on being helpful, direct, and slightly motivating.
+      Focus on being helpful, direct, and slightly motivating. Return ONLY the JSON. No markdown formatting.
     `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "system", content: "You are a smart financial advisor." }, { role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-    });
-
-    res.json(JSON.parse(response.choices[0].message.content));
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().replace(/```json|```/g, '').trim();
+    const data = JSON.parse(text);
+    
+    aiCache.set(cacheKey, data);
+    res.json(data);
   } catch (err) {
     console.error('AI Insight Error:', err);
-    res.status(500).json({ message: 'Error generating AI insights' });
+    res.status(500).json({ 
+      message: 'Error generating AI insights',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
+/**
+ * Detects user's spending personality based on category breakdown.
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 exports.getSpendingPersonality = async (req, res) => {
   const { expenses } = req.body;
   
@@ -62,6 +94,9 @@ exports.getSpendingPersonality = async (req, res) => {
     acc[e.category] = (acc[e.category] || 0) + e.amount;
     return acc;
   }, {});
+
+  const cacheKey = `personality_${JSON.stringify(categories)}`;
+  if (aiCache.has(cacheKey)) return res.json(aiCache.get(cacheKey));
 
   try {
     const prompt = `
@@ -78,21 +113,28 @@ exports.getSpendingPersonality = async (req, res) => {
         "description": "A short paragraph description of why they fit this category",
         "suggestion": "A single powerful behavioral suggestion based on their pattern"
       }
+      Return ONLY the JSON. No markdown.
     `;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "system", content: "You are a behavioral financial expert." }, { role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-    });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().replace(/```json|```/g, '').trim();
+    const data = JSON.parse(text);
 
-    res.json(JSON.parse(response.choices[0].message.content));
+    aiCache.set(cacheKey, data);
+    res.json(data);
   } catch (err) {
     console.error('AI Personality Error:', err);
     res.status(500).json({ message: 'Error detecting personality' });
   }
 };
 
+/**
+ * Interactive chat assistant for financial queries.
+ * @param {Object} req - Express request object with message and expenses context.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 exports.chatWithAI = async (req, res) => {
   const { message, expenses } = req.body;
 
@@ -106,33 +148,35 @@ exports.chatWithAI = async (req, res) => {
     ? `User's current total spent: ${total}. Top categories: ${JSON.stringify(categories)}. Recent transactions: ${JSON.stringify(expenses.slice(0, 10))}` 
     : "No expense data available.";
 
-  // Immediate Fallback Check for missing or placeholder API Key
-  const isInvalidKey = !process.env.OPENAI_API_KEY || 
-                       process.env.OPENAI_API_KEY === 'your_openai_api_key_here' || 
-                       process.env.OPENAI_API_KEY.startsWith('your_');
+  // API Key validation
+  const isInvalidKey = !process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY;
 
   if (isInvalidKey) {
     return res.json({ reply: generateFallbackReply(message, total, categories) });
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: "You are ExpenseMind AI, a versatile financial assistant. Use context when relevant, but answer ALL user questions helpfully, even if they aren't strictly about finance. Keep responses professional yet friendly." },
-        { role: "system", content: `CONTEXT: ${context}` },
-        { role: "user", content: message }
-      ],
-    });
+    const fullPrompt = `System: You are ExpenseMind AI, a versatile financial assistant. 
+    CONTEXT: ${context}
+    User Message: ${message}
+    Answer helpfully, professionally yet friendly.`;
 
-    res.json({ reply: response.choices[0].message.content });
+    const result = await model.generateContent(fullPrompt);
+    const response = await result.response;
+    res.json({ reply: response.text() });
   } catch (err) {
     console.error('AI Chat Error:', err);
     res.json({ reply: generateFallbackReply(message, total, categories) });
   }
 };
 
-// Helper to provide consistent fallback responses
+/**
+ * Fallback mechanism for basic financial queries when AI is unavailable.
+ * @param {string} message - User query.
+ * @param {number} total - Total expenses.
+ * @param {Object} categories - Category-wise breakdown.
+ * @returns {string} - Response string.
+ */
 function generateFallbackReply(message, total, categories) {
   const msg = (message || "").toLowerCase();
   
@@ -148,7 +192,7 @@ function generateFallbackReply(message, total, categories) {
   } 
   
   if (msg.includes('hello') || msg.includes('hi')) {
-    return "Hello! I'm your ExpenseMind AI assistant. I'm currently running in **optimized local mode**. I can help you with spending totals, saving tips, and budget status!";
+    return "Hello! I'm your ExpenseMind AI assistant. I'm currently running in **optimized mode**. I can help you with spending totals, saving tips, and budget status!";
   } 
   
   if (msg.includes('budget')) {
@@ -162,12 +206,19 @@ function generateFallbackReply(message, total, categories) {
   return "I'm currently in **Smart Lite** mode. I can tell you about your **total spent**, **budget status**, or give you **saving tips**. What would you like to check first?";
 }
 
+/**
+ * Simple predictive logic for future spending.
+ * @param {Object} req - Request.
+ * @param {Object} res - Response.
+ * @returns {void}
+ */
 exports.getPrediction = async (req, res) => {
   const { expenses } = req.body;
+  if (!expenses) return res.status(400).json({ message: "No data" });
   
-  // Basic prediction logic if AI fails or to save tokens
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const prediction = Math.round(total * 1.05); // Simple 5% increase prediction
+  const prediction = Math.round(total * 1.05);
 
   res.json({ prediction, confidence: 'Medium' });
 };
+

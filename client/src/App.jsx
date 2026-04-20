@@ -9,6 +9,7 @@ import HealthScore from './components/HealthScore';
 import AIChat from './components/AIChat';
 import ExportData from './components/ExportData';
 import Login from './components/Login';
+import ErrorBoundary from './components/ErrorBoundary';
 import { sampleExpenses, monthlyTrendData } from './data/sampleData';
 import { getExpenses, addExpense } from './utils/api';
 import { auth } from './utils/firebase';
@@ -55,7 +56,6 @@ export default function App() {
       setExpenses(prev => [res.data, ...prev]);
     } catch (err) {
       console.error('Error adding expense:', err);
-      // Fallback for demo
       const newExpense = {
         ...expenseData,
         _id: Date.now().toString(),
@@ -79,24 +79,15 @@ export default function App() {
     }
 
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard expenses={expenses} monthlyTrend={monthlyTrendData} />;
-      case 'add':
-        return <AddExpense onAdd={handleAddExpense} />;
-      case 'insights':
-        return <AIInsights expenses={expenses} />;
-      case 'personality':
-        return <SpendingPersonality expenses={expenses} />;
-      case 'predict':
-        return <Predictions expenses={expenses} />;
-      case 'health':
-        return <HealthScore expenses={expenses} />;
-      case 'chat':
-        return <AIChat expenses={expenses} />;
-      case 'export':
-        return <ExportData expenses={expenses} />;
-      default:
-        return <Dashboard expenses={expenses} monthlyTrend={monthlyTrendData} />;
+      case 'dashboard': return <Dashboard expenses={expenses} monthlyTrend={monthlyTrendData} />;
+      case 'add': return <AddExpense onAdd={handleAddExpense} />;
+      case 'insights': return <AIInsights expenses={expenses} />;
+      case 'personality': return <SpendingPersonality expenses={expenses} />;
+      case 'predict': return <Predictions expenses={expenses} />;
+      case 'health': return <HealthScore expenses={expenses} />;
+      case 'chat': return <AIChat expenses={expenses} />;
+      case 'export': return <ExportData expenses={expenses} />;
+      default: return <Dashboard expenses={expenses} monthlyTrend={monthlyTrendData} />;
     }
   };
 
@@ -104,13 +95,11 @@ export default function App() {
     <div className="flex min-h-screen bg-[var(--bg-primary)]">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
 
-      {/* Main Content */}
-      <main
-        className="flex-1 transition-all duration-300 lg:ml-[260px]"
-        style={{ minHeight: '100vh' }}
-      >
+      <main className="flex-1 transition-all duration-300 lg:ml-[260px]" style={{ minHeight: '100vh' }}>
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-16 lg:pt-8">
-          {renderContent()}
+          <ErrorBoundary>
+            {renderContent()}
+          </ErrorBoundary>
         </div>
       </main>
     </div>

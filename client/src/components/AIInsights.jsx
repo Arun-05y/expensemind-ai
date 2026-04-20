@@ -9,6 +9,7 @@ import { categoryColors } from '../data/sampleData';
 
 export default function AIInsights({ expenses }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [aiData, setAiData] = useState(null);
   const [useLocal, setUseLocal] = useState(true);
 
@@ -16,17 +17,17 @@ export default function AIInsights({ expenses }) {
   const categories = useMemo(() => calculateCategoryTotals(expenses), [expenses]);
   const health = useMemo(() => calculateFinancialHealthScore(expenses), [expenses]);
 
-  // Generate local insights
+  // Generate local insights as a fallback
   const localInsights = useMemo(() => {
     const sorted = [...categories].sort((a, b) => b.value - a.value);
-    const topThree = sorted.slice(0, 3);
-    const foodPct = ((categories.find(c => c.name === 'Food')?.value || 0) / total * 100).toFixed(0);
-    const travelPct = ((categories.find(c => c.name === 'Travel')?.value || 0) / total * 100).toFixed(0);
+    const totalVal = Math.max(total, 1);
+    const foodPct = ((categories.find(c => c.name === 'Food')?.value || 0) / totalVal * 100).toFixed(0);
+    const travelPct = ((categories.find(c => c.name === 'Travel')?.value || 0) / totalVal * 100).toFixed(0);
 
     return {
       summary: `This month, you've spent ${formatCurrency(total)} across ${categories.length} categories. ` +
         `Your top spending category is ${sorted[0]?.name || 'N/A'} at ${formatCurrency(sorted[0]?.value || 0)} ` +
-        `(${((sorted[0]?.value || 0) / total * 100).toFixed(0)}% of total). ` +
+        `(${((sorted[0]?.value || 0) / totalVal * 100).toFixed(0)}% of total). ` +
         (health.isOverBudget
           ? `You're currently over budget by ${formatCurrency(total - health.budget)}.`
           : `You're within your budget with ${formatCurrency(health.budget - total)} remaining.`),
@@ -49,24 +50,29 @@ export default function AIInsights({ expenses }) {
 
   const fetchAIInsights = async () => {
     setLoading(true);
+    setError(null);
     setUseLocal(false);
     try {
       const res = await getAIInsights(expenses);
+      if (!res.data) throw new Error("Invalid response");
       setAiData(res.data);
-    } catch {
+    } catch (err) {
+      console.error("AI Fetch Error:", err);
+      setError("AI analysis is currently unavailable. Using local smart analysis.");
       setUseLocal(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const data = useLocal ? localInsights : aiData;
 
   return (
-    <div className="space-y-6 fade-in">
+    <div className="space-y-6 fade-in" role="region" aria-label="AI Spending Analysis">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="font-['Outfit'] text-2xl sm:text-3xl font-bold flex items-center gap-3">
-            <Brain className="text-[var(--accent-primary)]" size={28} />
+            <Brain className="text-[var(--accent-primary)]" size={28} aria-hidden="true" />
             AI Insights
           </h1>
           <p className="text-[var(--text-secondary)] mt-1 text-sm">
@@ -78,11 +84,20 @@ export default function AIInsights({ expenses }) {
           onClick={fetchAIInsights}
           className="btn-primary flex items-center gap-2"
           disabled={loading}
+          aria-busy={loading}
+          aria-label={loading ? "Analyzing your expenses" : "Request AI financial analysis"}
         >
           {loading ? <Loader size={16} className="animate-spin" /> : <Brain size={16} />}
           {loading ? 'Analyzing...' : 'Get AI Insights'}
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-500 text-sm flex items-center gap-3" role="alert">
+          <AlertTriangle size={18} />
+          {error}
+        </div>
+      )}
 
       {data && (
         <div className="space-y-5">

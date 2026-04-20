@@ -56,23 +56,35 @@ export default function AddExpense({ onAdd }) {
       </div>
 
       {success && (
-        <div className="mb-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-3 slide-in">
-          <span className="text-xl">✅</span>
+        <div 
+          className="mb-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-3 slide-in"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="text-xl" aria-hidden="true">✅</span>
           <span className="font-medium text-sm">Expense added successfully!</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="glass-card p-6 sm:p-8 space-y-5">
+      <form 
+        onSubmit={handleSubmit} 
+        className="glass-card p-6 sm:p-8 space-y-5"
+        aria-label="New expense form"
+      >
         {/* Amount */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2">
-            <IndianRupee size={14} /> Amount
+          <label 
+            htmlFor="expense-amount"
+            className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2"
+          >
+            <IndianRupee size={14} aria-hidden="true" /> Amount
           </label>
           <input
             id="expense-amount"
             type="number"
             className="input-field text-2xl font-bold"
             placeholder="0"
+            aria-label="Amount in Indian Rupees"
             value={form.amount}
             onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
             min="1"
@@ -82,29 +94,33 @@ export default function AddExpense({ onAdd }) {
 
         {/* Note with AI */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2">
-            <FileText size={14} /> Note / Description
+          <label 
+            htmlFor="expense-note"
+            className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2"
+          >
+            <FileText size={14} aria-hidden="true" /> Note / Description
           </label>
           <input
             id="expense-note"
             type="text"
             className="input-field"
             placeholder="e.g., Swiggy dinner order, Uber ride..."
+            aria-description="The AI will try to categorize your expense based on this note"
             value={form.note}
             onChange={handleNoteChange}
           />
           {aiSuggested && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-[var(--accent-primary)]">
-              <Sparkles size={13} />
+            <div className="mt-2 flex items-center gap-2 text-xs text-[var(--accent-primary)]" role="status">
+              <Sparkles size={13} aria-hidden="true" />
               <span>AI suggests: <strong>{aiSuggested}</strong></span>
             </div>
           )}
         </div>
 
         {/* Category */}
-        <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2">
-            <Tag size={14} /> Category
+        <div role="group" aria-labelledby="category-label">
+          <label id="category-label" className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2">
+            <Tag size={14} aria-hidden="true" /> Category
           </label>
           <div className="grid grid-cols-4 gap-2">
             {categories.map(cat => (
@@ -113,13 +129,15 @@ export default function AddExpense({ onAdd }) {
                 type="button"
                 id={`category-${cat.toLowerCase()}`}
                 onClick={() => setForm(f => ({ ...f, category: cat }))}
+                aria-pressed={form.category === cat}
+                aria-label={`Select category ${cat}`}
                 className={`p-2.5 rounded-xl text-xs font-medium transition-all duration-200 flex flex-col items-center gap-1
                   ${form.category === cat
                     ? 'bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40 text-white'
                     : 'bg-white/[0.03] border border-transparent text-[var(--text-secondary)] hover:bg-white/[0.06]'
                   }`}
               >
-                <span className="text-lg">{categoryIcons[cat]}</span>
+                <span className="text-lg" aria-hidden="true">{categoryIcons[cat]}</span>
                 {cat}
               </button>
             ))}
@@ -128,13 +146,17 @@ export default function AddExpense({ onAdd }) {
 
         {/* Date */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2">
-            <Calendar size={14} /> Date
+          <label 
+            htmlFor="expense-date"
+            className="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] mb-2"
+          >
+            <Calendar size={14} aria-hidden="true" /> Date
           </label>
           <input
             id="expense-date"
             type="date"
             className="input-field"
+            aria-label="Date of expense"
             value={form.date}
             onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
             required
@@ -142,8 +164,13 @@ export default function AddExpense({ onAdd }) {
         </div>
 
         {/* Submit */}
-        <button id="add-expense-submit" type="submit" className="btn-primary w-full py-3 flex items-center justify-center gap-2 text-base">
-          <PlusCircle size={18} />
+        <button 
+          id="add-expense-submit" 
+          type="submit" 
+          className="btn-primary w-full py-3 flex items-center justify-center gap-2 text-base"
+          aria-label="Submit new expense"
+        >
+          <PlusCircle size={18} aria-hidden="true" />
           Add Expense
         </button>
       </form>
