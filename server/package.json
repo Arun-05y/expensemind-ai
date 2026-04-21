@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend server for ExpenseMind AI - Smart Expense & Budget Advisor",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
